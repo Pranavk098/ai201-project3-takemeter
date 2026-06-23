@@ -2,148 +2,177 @@
 
 *Project 3, CodePath Applications of AI. Last updated: 2026-06-22.*
 
-A fine-tuned text classifier that labels the **register of F1 discourse** on Reddit. Given a comment, it predicts one of four labels: `analysis`, `hot_take`, `reaction`, or `joke`.
+TakeMeter is a fine-tuned text classifier that labels the **register of Formula 1 discourse** on Reddit. Given a comment, it predicts exactly one of four labels: `analysis`, `hot_take`, `reaction`, or `joke`. This document is the full project spec — written before any data was collected.
+
+> **Note on examples:** posts shown below are *illustrative templates* written to mark each boundary. The real 200 annotated examples are scraped comments (Milestone 3).
 
 ---
 
-## 1. Community & why these labels matter
+## 1. Community
 
-**Community:** Formula 1 fans on Reddit — primarily [r/formula1](https://reddit.com/r/formula1) (the main hub: race threads, news, opinions, memes) with [r/F1Technical](https://reddit.com/r/F1Technical) as a denser source of genuine analysis.
+**Community:** Formula 1 fans on Reddit — primarily [r/formula1](https://reddit.com/r/formula1) (the main hub: race threads, news, opinions, memes), with [r/F1Technical](https://reddit.com/r/F1Technical) as a denser source of genuine analysis.
 
-F1 discourse moves between very different registers depending on the moment: a strategy post-mortem reads nothing like a live-thread scream of joy, which reads nothing like a meme about Ferrari's pit wall. Regulars instinctively distinguish a *substantive breakdown* from a *spicy assertion* from an *in-the-moment reaction* from a *bit* — but those distinctions are exactly what's hard to pin down in writing. That's the task.
+**Why I chose it, and why it's a good fit for classification:** F1 is one of the few communities whose discourse *naturally* spans four very different registers, and it produces all of them every single race weekend:
 
-**Important framing:** because one of the labels (`joke`) is not a "take," TakeMeter classifies *register/type*, not quality on a single axis. Quality is the implied ordering: `analysis` > `hot_take` > `reaction` > `joke`. The README states this explicitly.
+- A weekly **live event** cadence floods threads with in-the-moment emotional **reactions** (crashes, overtakes, penalties, results).
+- A deep **technical/strategic layer** (tyre degradation, undercut/overcut, aero, regulations) produces evidence-backed **analysis**.
+- Intense **driver/team tribalism** (Verstappen vs. Hamilton, Ferrari's strategy reputation) produces confident, unevidenced **hot takes**.
+- A famously **meme-heavy culture** produces **jokes** in enormous volume.
+
+That four-way spread is what makes the discourse varied enough to be interesting: the same event (say, a Ferrari pit blunder) generates a strategy breakdown, a "fire the pit wall" hot take, a despairing reaction, and a magic-8-ball meme — often in the same thread. Distinguishing these is something regulars do instinctively, which means the labels are grounded in real community norms.
+
+**Framing caveat (stated honestly):** because one label (`joke`) is not a "take," TakeMeter classifies *register/type*, not quality on a single axis. Quality is the *implied ordering* `analysis` > `hot_take` > `reaction` > `joke`.
 
 ---
 
-## 2. Label taxonomy (4 labels)
+## 2. Labels
 
-> The examples below are **illustrative templates** written to show each boundary. The real 200 annotated examples come from scraped comments in Milestone 2.
+Four labels. Each definition is a complete sentence, followed by two example posts.
 
 ### `analysis`
-**Definition:** A structured argument backed by *specific, verifiable evidence* — lap-time/sector comparisons, tire-strategy reasoning (undercut/overcut, stint length, deg), technical/aero/regulation explanation, or historical/statistical comparison. The reasoning is the point; the claim is checkable.
-
-- ✅ *"Leclerc lost that on strategy, not pace — he was ~0.3s/lap quicker on mediums but Ferrari left him out 4 laps too long, came back into traffic, and the undercut was gone."*
-- ✅ *"Red Bull's high-speed advantage is the anti-dive front suspension — it holds ride height under braking, protecting underfloor load. Way less pitch than Ferrari on the onboards."*
-- ❓ *Uncertain:* *"DRS gives a straight-line boost when you're within a second."* — true and technical, but a well-known fact with no argument or situation-specific claim. **Decision:** pure common-knowledge info with no claim → filter as `other` at collection, **not** `analysis`. Analysis requires reasoning toward a claim, not reciting a fact.
+**Definition:** A comment that makes a structured argument backed by specific, verifiable evidence — such as lap-time or sector comparisons, tyre-strategy reasoning, technical/aero/regulation explanation, or historical/statistical comparison — where the reasoning is the point and the claim could be checked.
+- *"Leclerc lost that on strategy, not pace — he was ~0.3s/lap quicker on mediums but Ferrari left him out 4 laps too long, came back into traffic, and the undercut was gone."*
+- *"Red Bull's high-speed advantage is the anti-dive front suspension — it holds ride height under braking, protecting underfloor load, so there's far less pitch than Ferrari on the onboards."*
 
 ### `hot_take`
-**Definition:** A bold, confident *opinion or judgment* asserted **without** genuine supporting evidence. The claim might be true, but it declares rather than argues; any evidence is vague, cherry-picked, or decorative. Usually evaluative — rankings, overrated/underrated, "should be fired," predictions stated as fact.
-
-- ✅ *"Verstappen is the most overrated champion in history. Put him in a midfield car and he's nothing."*
-- ✅ *"Hamilton is washed, he should retire. Embarrassing to watch."*
-- ❓ *Uncertain:* *"Norris wins the title this year, easy."* — a confident prediction with no evidence. **Decision:** an unevidenced confident claim is a `hot_take` even when it's a prediction rather than a rating.
+**Definition:** A comment that asserts a bold, confident opinion or judgment — a ranking, an overrated/underrated claim, a "should be fired/should retire," or a prediction stated as fact — without genuine supporting evidence, where any evidence present is vague, cherry-picked, or decorative.
+- *"Verstappen is the most overrated champion in history. Put him in a midfield car and he's nothing."*
+- *"Hamilton is washed, he should retire. Embarrassing to watch."*
 
 ### `reaction`
-**Definition:** An immediate *emotional response to a specific event* — excitement, despair, anger, awe — with little or no argument. Venting a feeling in the moment.
-
-- ✅ *"OH MY GOD WHAT A MOVE BY LANDO INTO TURN 1, I'M SHAKING"*
-- ✅ *"not again Ferrari… I genuinely can't watch this team anymore 😭"*
-- ❓ *Uncertain:* *"That penalty was an absolute joke."* — pure in-the-moment venting (→ `reaction`) but also an evaluative verdict on the stewards (→ `hot_take`). **Decision:** if it's a bare exclamation of displeasure with no position to argue → `reaction`; if it asserts a defensible verdict ("the stewards were wrong because…") → `hot_take`. This bare version leans `reaction`. Genuinely hard — flagged as a documented edge case.
+**Definition:** A comment that is an immediate emotional response to a specific event — excitement, despair, anger, awe — with little or no argument and no debatable position, simply venting a feeling in the moment.
+- *"OH MY GOD WHAT A MOVE BY LANDO INTO TURN 1, I'M SHAKING"*
+- *"not again Ferrari… I genuinely can't watch this team anymore 😭"*
 
 ### `joke`
-**Definition:** A post whose *primary intent is humor* — meme, pun, bit, copypasta, sarcastic shitpost, running gag. The point is to be funny, not to inform, judge, or sincerely emote.
+**Definition:** A comment whose primary intent is humor — a meme, pun, bit, copypasta, sarcastic shitpost, or running gag — where being funny, not informing or judging or sincerely emoting, is the point.
+- *"Ferrari's strategy dept was last seen taking orders from a magic 8-ball."*
+- *"BREAKING: Stroll qualifies P18, blames the car, the wind, and the concept of time itself."*
 
-- ✅ *"Ferrari's strategy dept was last seen taking orders from a magic 8-ball."*
-- ✅ *"BREAKING: Stroll qualifies P18, blames the car, the wind, and the concept of time itself."*
-- ❓ *Uncertain:* *"Yeah Stroll definitely earned that seat on merit 🙄"* — sarcasm that encodes a real opinion (pay driver). **Decision:** if it's structured as a bit/punchline → `joke`; if it's the author's plainly-meant opinion delivered drily → `hot_take`. Default to `joke` when comedic construction is clearly the point.
-
----
-
-## 3. Decision rules (boundary resolution)
-
-These are the rules applied when a comment could plausibly fit two labels.
+### Decision rules (boundary resolution)
+Applied whenever a comment could plausibly fit two labels:
 
 1. **`hot_take` vs `analysis`** — Strip the opinion *and emotional/rant framing*. If the remaining evidence is **load-bearing** (genuinely establishes the claim) → `analysis`. If it's **decorative** (cherry-picked, vague, propping up a pre-formed verdict) → `hot_take`. *Substance over tone: a furious rant with a real argument underneath is still `analysis`.*
-2. **`reaction` vs `hot_take`** — Does it assert an evaluative *position* you could agree/disagree with? → `hot_take`. Is it just venting feeling about a just-happened event? → `reaction`.
+2. **`reaction` vs `hot_take`** — A comment is `hot_take` only if it asserts a **debatable verdict/position** (a ranking, a "should have," a should-be-penalized claim). Pure emotional exclamation — *including hyperbolic superlatives like "worst ever"* with no argument — is `reaction`. (*"worst pit stop ever"* = venting → `reaction`; *"that should've been a penalty"* = verdict → `hot_take`.)
 3. **`joke` vs `reaction`/`hot_take`** — If the *comedic construction is clearly the point* (bit, punchline, meme format, exaggeration-for-laughs) → `joke`. If it's sincere emotion/opinion that merely happens to be hyperbolic → the sincere register. **Tie-breaker:** when genuinely 50/50, default to the sincere category, *not* `joke`.
 4. **Fits none** (pure questions, news/info dumps, off-topic) → **filtered out at collection**, never labeled, keeping the `other` bucket at 0%.
 
-### Worked ambiguous example (the technically-sound rant)
-> *"I'm SO sick of people saying Leclerc threw it. He did NOT. He pitted lap 18 on the undercut, came out P3, then the wall pitted Sainz a lap later onto the same medium for no reason, double-stacked them and cost Charles ~5s in the pit lane. The hard was 0.8s/lap slower in those temps so the overcut was dead anyway."*
+---
 
-Could be `hot_take` (angry, accusatory) or `analysis` (cites specifics). **Applying rule #1:** strip the anger and a specific, verifiable causal argument remains → **`analysis`**. This is also a predicted model failure mode (the model will lean on CAPS/profanity and may call it `hot_take`/`reaction`) and is reserved for the README's "model vs. intent" reflection.
+## 3. Hard edge cases
 
-### Mutual-exclusivity & exhaustiveness check
-- **Exclusive:** the rules above assign exactly one label to each borderline case. ✔
-- **Exhaustive:** `analysis`/`hot_take`/`reaction`/`joke` plus collection-time filtering of non-takes is expected to cover ≥90% of comments without a catch-all. ✔ (Validated against 30–40 real comments before committing — see M2.)
+The genuinely ambiguous post *types* I expect during annotation, and how I'll handle each:
+
+| Ambiguous type | Example | Handling rule |
+|---|---|---|
+| **Technically-sound rant** (analysis ↔ hot_take) | *"I'm SO sick of people saying Leclerc threw it. He pitted lap 18 on the undercut, came out P3, then the wall double-stacked Sainz for no reason, costing ~5s…"* | Rule #1: strip the anger; the specific causal argument survives → **`analysis`**. |
+| **Evaluative venting** (reaction ↔ hot_take) | *"Worst pit stop I've ever seen, clown show"* vs *"that should've been a penalty, stewards are blind"* | Rule #2: hyperbolic venting with no debatable position → **`reaction`**; an arguable verdict → **`hot_take`**. |
+| **Humorous hyperbole / sincere stress** (joke ↔ reaction) | *"I have aged 10 years in 3 laps watching this."* | Rule #3 tie-breaker: sincere emotion via exaggeration → **`reaction`** unless it's a constructed bit. |
+| **Sarcasm carrying an opinion** (joke ↔ hot_take) | *"Ah yes, brilliant strategy Ferrari, galaxy-brained stuff."* | Rule #3: punchline-structured sarcasm → **`joke`**, even though it encodes a real take. |
+| **Fact recitation** (analysis ↔ other) | *"DRS only works within 1s at the detection point."* | A fact with no claim/argument is **not** `analysis` → filter as `other`. |
+
+**Documented hard cases from annotation (filled during Milestone 3):** I will keep a running list in the dataset's `notes` column and promote the **3 most instructive** here — the actual comment, the two labels it sat between, and what I decided and why.
+
+1. _(to be added during annotation)_
+2. _(to be added during annotation)_
+3. _(to be added during annotation)_
 
 ---
 
-## 4. Data collection & annotation (Milestone 2)
+## 4. Data collection plan
 
+- **Source:** public Reddit comments — r/F1Technical (analysis-dense) and r/formula1 (everything else), collected via the PRAW script ([scripts/collect.py](scripts/collect.py)). Public content only; no authenticated or private channels.
 - **Unit:** one comment = one example.
-- **Target:** ~200 total, ~50 per label, **hard floor ≥40 (20%) per label**.
-- **Sourcing (stratified so balance is built in):**
+- **How many per label:** target **~50 each (200 total)**, with a **hard floor of ≥40 (20%) per label**. (The milestone's ceiling is no label above 70%; my target is far stricter so no class dominates.)
+- **Sourcing strategy (stratified so balance is built in, not hoped for):**
 
   | Label | Where it's densest |
   |---|---|
   | `analysis` | r/F1Technical top comments; r/formula1 strategy/technical threads |
   | `hot_take` | r/formula1 "unpopular opinion" / driver-ranking / tier-list threads |
-  | `reaction` | r/formula1 live race thread comments (around key moments) |
-  | `joke` | r/formula1 top-voted funny comments (r/formuladank is mostly image memes — thin on text) |
+  | `reaction` | r/formula1 live race-thread comments around key moments |
+  | `joke` | r/formula1 top-voted funny comments |
 
-- **Collection method:** **PRAW** (Python Reddit API Wrapper). A small local script pulls a pool of comments per subreddit/thread into a CSV; comments are then hand-labeled and balanced. Free; needs Reddit API creds (client_id/secret from reddit.com/prefs/apps). *Easily swappable for manual collection or an Apify actor if creds are a hassle.*
-- **Filtering at collection:** drop pure questions, news/info dumps, off-topic → `other` stays at 0%.
-- **Validation step:** read 30–40 collected comments first to confirm the labels apply cleanly *before* annotating all 200; revise definitions if not.
-- **CSV schema:** `id, text, label, source_sub, split, notes` — `notes` records *why* hard cases were labeled (feeds the README's "3 difficult examples").
-- **Splits:** stratified **70/15/15 → 140 train / 30 val / 30 test**, each split ~25% per class. **Test set held out until final eval** (guards against leakage inflating accuracy).
+- **If a label is underrepresented after 200:** do a **targeted top-up** — return to that label's densest source (e.g., more r/F1Technical threads for `analysis`, more race threads for `reaction`) and collect only that class until it clears the ≥40 floor, then re-count. I will not down-sample the majority classes below ~50; I add to the minority.
+- **Pre-collection validation gate:** read 30–40 collected comments first and confirm the labels apply cleanly *before* annotating all 200; revise §2–3 if not.
+- **CSV format:** a **single** file `data/takemeter_dataset.csv` with columns **`text, label, notes`** (plus `id, source_sub` for provenance). **No pre-split / no `split` column** — the Colab notebook performs the 70/15/15 train/val/test split automatically.
 
 ---
 
-## 5. Fine-tuning (Milestone 3)
+## 5. Evaluation metrics
 
-- **Base model:** `distilbert-base-uncased` + 4-class classification head.
-- **Approach:** HuggingFace `transformers` `Trainer` in the Colab starter notebook (free T4 GPU).
-- **Key hyperparameter decision → number of epochs.** With only ~140 training examples, **overfitting is the dominant risk**, so train for a *low* epoch count (≈4) and select the best checkpoint by validation performance rather than training long. (Defaults: lr 2e-5–5e-5, batch 16, max_len 256.) Documented with rationale in the README.
+Accuracy alone is insufficient for this task: with four classes on a subjective boundary, a model can post a respectable accuracy while quietly collapsing the rare, high-value `analysis` class into `hot_take`. So the report uses a metric *set*, each chosen for a reason specific to TakeMeter:
 
----
+- **Overall accuracy** — a baseline sanity figure and the headline comparison vs. the Groq baseline, but never the sole metric.
+- **Macro-averaged F1 (primary metric)** — weights every class equally, so the model cannot win by nailing the high-frequency registers (`joke`, `reaction`) while failing `analysis`. For a *discourse-quality* tool, getting the rare substantive class right matters as much as the common ones — macro-F1 captures exactly that.
+- **Per-class precision / recall / F1** — because the cost of confusions is asymmetric. I care most about **recall on `analysis`** (a useful tool must not silently drop genuine substance) and **precision on `analysis`** (it must not flatter low-quality posts as analysis).
+- **4×4 confusion matrix** — diagnostic, not just a score: it shows *which* registers get confused. I predict the hot confusions will be `analysis`↔`hot_take` (the tone-vs-substance boundary) and `joke`↔`reaction` (humor-vs-sincerity).
 
-## 6. Baseline comparison (Milestone 4)
-
-- **Model:** Groq `llama-3.3-70b-versatile`, **true zero-shot**.
-- **Prompt:** contains the 4 label *definitions* and decision rules but **no example posts**; must return exactly one label. Run on the **same 30 test comments** as the fine-tuned model.
+Both the fine-tuned model and the Groq zero-shot baseline are scored on the identical held-out test set.
 
 ---
 
-## 7. Evaluation report (Milestone 5)
+## 6. Definition of success
 
-For both models on the same test set:
-- Overall **accuracy**.
-- **Per-class precision / recall / F1**.
-- **4×4 confusion matrix** (`confusion_matrix.png`).
-- **≥3 misclassified examples** with analysis of *why*.
-- **Reflection: what the model learned vs. what I intended** — anchored on the tone-vs-substance failure mode (does it over-rely on CAPS/profanity/emoji as surface cues?).
-- Outputs: `evaluation_results.json`, `confusion_matrix.png`.
+Concrete, objectively checkable thresholds on the held-out test set:
+
+- **Primary:** macro-F1 **≥ 0.70**.
+- **Relative (did fine-tuning earn its keep?):** the fine-tuned model beats the Groq zero-shot baseline's macro-F1 by **≥ 0.10**. If it doesn't, fine-tuning added little and I'll say so.
+- **Per-class floor:** **recall ≥ 0.60 on `analysis`** — the hardest, highest-value class.
+
+**"Good enough for deployment" in a real community tool:** higher bar — **macro-F1 ≥ 0.75 and `analysis` precision ≥ 0.70**, so that posts the tool *promotes* as analysis are usually genuinely analysis (precision matters most when you act on the positive label). Below that bar, it's only fit as a **human-in-the-loop assist** (suggesting a label for a moderator to confirm), not an autonomous classifier.
+
+**Honesty caveat:** this is a subjective task labeled by a single annotator, so even two humans wouldn't agree 100% — a realistic performance ceiling is well below 1.0. Inter-annotator agreement (stretch feature) would let me contextualize that ceiling; without it, I treat ~0.70 macro-F1 as a strong result, not a disappointing one.
 
 ---
 
-## 8. Deliverables & repo structure
+## 7. AI Tool Plan
+
+This project has little code to generate; AI tools help in three specific places.
+
+- **Label stress-testing — DONE (used Claude).** Before annotating, I had the assistant generate ~8 boundary posts and classify each with these definitions. It validated most boundaries and exposed one weak spot — `reaction` vs `hot_take` for *evaluative venting* — which I fixed by sharpening **rule #2** (debatable verdict → `hot_take`; hyperbolic venting → `reaction`). Outcome recorded in §3.
+- **Annotation assistance — DECISION: hand-label all 200 (no LLM pre-labeling).** Rationale: the boundaries here are subjective and tone-sensitive; hand-labeling keeps me close to the data and avoids importing an LLM's systematic biases into the *training* labels (which would also leak into the very thing I'm measuring against the Groq baseline). *Fallback if time-constrained:* pre-label with an LLM, review and correct **every** row, and add a `label_source` column (`human` / `llm_reviewed`) for disclosure. I am explicitly choosing the hand-label path unless that fallback proves necessary.
+- **Failure analysis — PLANNED (will use Claude).** After evaluation, I'll give the assistant the list of wrong test predictions (`text`, true label, predicted label) and ask it to propose *systematic* patterns (e.g., "evidenced rants misread as `hot_take` via CAPS/profanity"). **Verification:** I will not accept a pattern on the AI's word — I'll re-read every cited example myself and confirm the pattern holds in the confusion-matrix counts before it goes in the writeup.
+
+### AI usage disclosure
+Claude (Opus 4.8, via Claude Code) was used to: brainstorm the label taxonomy and edge-case rules, run the label stress-test above, draft this `planning.md`, and scaffold the collection script + tests. Planned future use: failure-pattern analysis (verified manually). Training labels are **hand-assigned by me**; no LLM pre-labeling unless disclosed via a `label_source` column.
+
+---
+
+## 8. Model & approach (context for later milestones)
+
+- **Fine-tune** `distilbert-base-uncased` + 4-class head in the Colab starter notebook (free T4 GPU).
+- **Key hyperparameter decision → epochs.** With ~140 training rows, overfitting is the dominant risk, so train for a *low* epoch count (≈4) and keep the best-by-validation checkpoint rather than training long.
+- **Baseline:** Groq `llama-3.3-70b-versatile`, true zero-shot (label definitions + rules in the prompt, no example posts), same test set.
+
+---
+
+## 9. Deliverables & repo structure
 
 ```
 ai201-project3-takemeter/
-├── planning.md                 # this file
-├── README.md                   # community, labels, data, distribution, 3 hard examples, eval report
-├── data/takemeter_dataset.csv  # 200 labeled comments + split column
-├── scripts/collect.py          # PRAW collection script (M2)
-├── scripts/baseline_groq.py    # zero-shot baseline (M4) — or run in notebook
-├── results/evaluation_results.json
-└── results/confusion_matrix.png
+├── planning.md                      # this file
+├── README.md                        # graded writeup (filled in later milestones)
+├── requirements.txt
+├── data/takemeter_dataset.csv       # 200 labeled comments (text,label,notes,+provenance) — single file, no split
+├── scripts/collect.py               # PRAW collector
+├── notebook/label_map.py            # label↔id mapping for the notebook
+├── notebook/groq_prompt.md          # zero-shot baseline prompt
+└── results/                         # evaluation_results.json + confusion_matrix.png (from Colab)
 ```
 
 ---
 
-## 9. Stretch features (update this section before starting each)
+## 10. Stretch features (update this section before starting each)
 
-- [ ] **Inter-annotator reliability** — 1 other person labels 30+ examples; report Cohen's κ + disagreement analysis.
+- [ ] **Inter-annotator reliability** — 1 other person labels 30+ examples; report Cohen's κ + disagreement analysis. *(Also contextualizes the §6 performance ceiling.)*
 - [ ] **Confidence calibration** — does a 90%-confident prediction beat a 60%-confident one?
-- [ ] **Error-pattern analysis** *(most natural fit)* — find a *systematic* pattern, e.g. "sound rants get misread as hot_take via tone cues."
+- [ ] **Error-pattern analysis** *(most natural fit)* — a *systematic* pattern, e.g. sound rants misread as `hot_take` via tone cues.
 - [ ] **Deployed interface** — input a comment → show predicted label + confidence.
 
 ---
 
-## 10. Open assumptions
+## 11. Open assumptions
 
-- PRAW chosen as default collector; falls back to manual/Apify if Reddit creds are blocked.
-- Fine-tuning runs in the user's Colab notebook (this environment can't run a GPU); deliverables here are the dataset, scripts, prompts, notebook config, and docs.
-- Split ratio 70/15/15 assumed; may adjust to match the starter notebook's expected input format.
+- The Colab starter notebook performs the 70/15/15 split; if its split proves non-stratified and a class is starved in the test set, restore stratified splitting (removed from `scripts/`, recoverable from git history).
+- Fine-tuning runs in the user's Colab notebook (this environment has no GPU); local deliverables are the dataset, collector, prompt, notebook config, and docs.

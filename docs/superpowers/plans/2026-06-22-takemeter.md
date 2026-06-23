@@ -333,7 +333,9 @@ git commit -m "data: 200 labeled F1 comments"
 
 ---
 
-## Task 5: Stratified split 🧪
+## Task 5: Stratified split 🧪 — ❌ REMOVED (superseded by Milestone 3)
+
+> Milestone 3 specifies the Colab notebook performs the 70/15/15 split automatically and that the dataset must be a **single un-split file**. `scripts/make_splits.py` and its test were removed; the dataset CSV has no `split` column. The original task is kept below for history only — **do not execute it.**
 
 **Files:**
 - Create: `scripts/make_splits.py`
