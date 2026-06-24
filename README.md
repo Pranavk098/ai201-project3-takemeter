@@ -187,8 +187,10 @@ A 3–5 minute demo video accompanies this repo. It shows live classification (v
 
 To check that the labels reflect a shareable standard rather than one annotator's idiosyncrasy, a **second annotator independently labels 32 comments** (8 per class) blind, then we compare against the original AI-suggested labels with Cohen's kappa.
 
-- Protocol: fill the `your_label` column in [`data/iaa_blind.csv`](data/iaa_blind.csv) without looking at the key, then run `python scripts/iaa.py`.
-- **Result:** percent agreement `__%`, Cohen's kappa `__` (run `scripts/iaa.py` to populate). Because this is a *subjective* discourse task, perfect agreement isn't expected; the disagreements — concentrated on the `joke`↔`reaction` boundary — quantify the same ambiguity the model struggles with, and contextualize the performance ceiling discussed under [Definition of success](planning.md).
+- Protocol: a second annotator filled `your_label` in [`data/iaa_blind.csv`](data/iaa_blind.csv) blind; `python scripts/iaa.py` computes the scores.
+- **Result: 43.8% agreement, Cohen's κ = 0.25** ("fair"), n = 32, 18 disagreements.
+- **Agreement is high on `analysis`** — only 2 of 18 disagreements touch it; evidenced reasoning is recognizable to both annotators. **Disagreement concentrates on the other three registers:** `reaction`↔`hot_take` (8 cases) and `joke` vs the rest (7 cases) account for nearly all of it.
+- **Interpretation (honest):** the low κ is itself a finding. `analysis` is a shareable standard, but the `hot_take` / `reaction` / `joke` boundaries are **genuinely subjective** — a second annotator draws them differently. This directly explains why the fine-tuned model's errors cluster on `joke`↔`reaction`, and why neither model clears ~0.80: part of the ceiling is in the *task*, not the model. It is also a candid reliability caveat, given the original labels were AI-suggested.
 
 ---
 
