@@ -48,7 +48,11 @@ def main():
     trainer.train()
 
     out = trainer.predict(test_ds)
-    y_pred = [id2label[i] for i in np.argmax(out.predictions, axis=1)]
+    logits = out.predictions
+    ex = np.exp(logits - logits.max(axis=1, keepdims=True))
+    probs = ex / ex.sum(axis=1, keepdims=True)
+    conf = probs.max(axis=1)
+    y_pred = [id2label[i] for i in np.argmax(logits, axis=1)]
     y_true = [id2label[i] for i in out.label_ids]
     acc = accuracy_score(y_true, y_pred)
     report = classification_report(y_true, y_pred, labels=LABELS, output_dict=True, zero_division=0)
@@ -59,9 +63,14 @@ def main():
     plt.tight_layout()
     plt.savefig("results/confusion_matrix.png", dpi=120)
 
+    trainer.save_model("results/ft_model")
+    tok.save_pretrained("results/ft_model")
+
     result = {"finetuned": {"model": MODEL, "epochs": EPOCHS, "lr": LR, "batch_size": 16,
                             "max_len": MAX_LEN, "accuracy": acc, "report": report,
-                            "y_true": y_true, "y_pred": y_pred, "texts": list(sp["test"]["text"])}}
+                            "y_true": y_true, "y_pred": y_pred,
+                            "confidences": [round(float(c), 4) for c in conf],
+                            "texts": list(sp["test"]["text"])}}
     if os.path.exists("results/baseline.json"):
         b = json.load(open("results/baseline.json"))
         result["baseline_groq"] = {"model": b["model"], "accuracy": b["accuracy"],

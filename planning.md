@@ -167,8 +167,8 @@ ai201-project3-takemeter/
 ## 10. Stretch features (update this section before starting each)
 
 - [ ] **Inter-annotator reliability** — 1 other person labels 30+ examples; report Cohen's κ + disagreement analysis. *(Also contextualizes the §6 performance ceiling.)*
-- [ ] **Confidence calibration** — does a 90%-confident prediction beat a 60%-confident one?
-- [ ] **Error-pattern analysis** *(most natural fit)* — a *systematic* pattern, e.g. sound rants misread as `hot_take` via tone cues.
+- [x] **Confidence calibration** (light) — done in README: confidence is reliable *except* on the jargon→analysis trap, where the model is overconfident (0.92–0.97 while wrong).
+- [x] **Error-pattern analysis** — done in README: `joke`↔`reaction` confusion is 4/8 errors; technical vocabulary pulls predictions toward `analysis` (verified vs. confusion matrix; "length-only" hypothesis discarded).
 - [ ] **Deployed interface** — input a comment → show predicted label + confidence.
 
 ---
