@@ -6,3 +6,4 @@ __pycache__/
 results/ft/
 results/ft_model/
 DEMO_SCRIPT.md
+.gradio/
