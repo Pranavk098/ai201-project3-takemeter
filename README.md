@@ -23,6 +23,12 @@ TakeMeter is a fine-tuned text classifier that labels a Formula 1 Reddit comment
 | `reaction` | An **immediate emotional response to a specific event**, with little or no argument and no debatable position. |
 | `joke` | A comment whose **primary intent is humor** — meme, pun, bit, sarcasm, copypasta. |
 
+**Two example posts per label:**
+- `analysis` — *"Leclerc lost that on strategy not pace — he was ~0.3s/lap quicker on mediums but Ferrari left him out 4 laps too long, so he came back into traffic and the undercut was gone."* / *"Red Bull's high-speed advantage is the anti-dive front suspension — it holds ride height under braking, protecting underfloor load."*
+- `hot_take` — *"Verstappen is the most overrated champion in history. Put him in a midfield car and he's nothing."* / *"Hamilton is washed, he should retire. Embarrassing to watch."*
+- `reaction` — *"OH MY GOD WHAT A MOVE BY LANDO INTO TURN 1, I'M SHAKING"* / *"not again Ferrari… I genuinely can't watch this team anymore 😭"*
+- `joke` — *"Ferrari's strategy dept was last seen taking orders from a magic 8-ball."* / *"BREAKING: Stroll qualifies P18, blames the car, the wind, and the concept of time itself."*
+
 **Decision rules** (the boundaries that actually matter):
 1. **`hot_take` vs `analysis`** — strip the opinion/rant framing; if the remaining evidence is *load-bearing* → `analysis`, if *decorative* → `hot_take` (substance over tone: a furious rant with a real argument is still `analysis`).
 2. **`reaction` vs `hot_take`** — a debatable verdict ("that should've been a penalty") → `hot_take`; pure venting, even hyperbolic ("worst stop ever") → `reaction`.
@@ -70,7 +76,26 @@ The notebook/pipeline splits this 70/15/15 → **train 140, val 30, test 30**, s
 
 ## Baseline (Groq zero-shot)
 
-`llama-3.3-70b-versatile`, **true zero-shot** (temperature 0): the prompt contains the four label definitions and the decision rules but **no example posts**, and instructs the model to output only the label name. Evaluated on the identical 30-comment test set. **0 of 30 responses were unparseable.**
+`llama-3.3-70b-versatile`, **true zero-shot** (temperature 0). **How results were collected:** [scripts/run_baseline.py](scripts/run_baseline.py) sends each of the 30 test comments to the Groq API with the prompt below, then parses each response by taking the first exact label match (lowercased); an unmatched response is counted as wrong. **0 of 30 were unparseable.** The prompt gives the label definitions and rules but **no example posts**, keeping it genuinely zero-shot:
+
+```text
+You are classifying the REGISTER of a comment from Formula 1 fan discussion into exactly one of four labels. Reply with ONLY the label in lowercase, nothing else.
+
+Labels:
+- analysis: a structured argument backed by specific, verifiable evidence (lap times, tire strategy, technical/regulation reasoning, statistics). The reasoning is the point.
+- hot_take: a bold, confident opinion or judgment asserted without genuine evidence (rankings, overrated/underrated, predictions stated as fact). Any evidence is vague or decorative.
+- reaction: an immediate emotional response to a specific event, with little or no argument.
+- joke: a comment whose primary intent is humor - meme, pun, bit, sarcasm, copypasta.
+
+Rules:
+- If an emotional or ranty tone wraps a real, evidenced argument, it is still analysis (substance over tone).
+- If the comedic construction is clearly the point, it is joke; if it is sincere emotion that merely happens to be hyperbolic, use the sincere label.
+
+Comment:
+"""{comment}"""
+
+Label:
+```
 
 ---
 
@@ -128,11 +153,42 @@ I asked an LLM to surface themes across all 8 wrong predictions, then verified e
 
 **Why the first prediction is reasonable:** the comment makes a structured causal argument with *specific, checkable* facts (Gasly's P4 in Bahrain in Toro Rosso's first Honda year; the team choosing to build around the engine) — that is precisely the evidenced reasoning the `analysis` definition targets, and the model is correctly, highly confident (0.97).
 
-**Confidence calibration (brief observation):** confidence is *partially* meaningful. On the joke/reaction boundary the model is appropriately *un*confident — its errors there cluster at 0.44–0.63. But it is **dangerously overconfident on the jargon trap**: both technical-vocabulary errors fired at 0.92–0.97. So a high confidence score is reliable *except* when the post is jargon-heavy.
+### Confidence calibration (stretch)
+Confidence **is** meaningful — accuracy rises monotonically with it on the test set:
+
+| Confidence bin | n | Accuracy |
+|---|---|---|
+| 0.90–1.00 | 12 | 0.83 |
+| 0.70–0.89 | 5 | 0.80 |
+| 0.50–0.69 | 9 | 0.67 |
+| < 0.50 | 4 | 0.50 |
+
+Aggregated, **high-confidence (≥0.80) predictions are 0.79 accurate vs 0.69 for low-confidence (<0.80)**, so the score is usable as a triage signal. The one caveat: two errors are *confidently* wrong (0.92–0.97), both the jargon→`analysis` trap — confidence is well-calibrated in aggregate but can still be fooled by heavy F1 vocabulary.
 
 ### What the model learned vs. what I intended
 
 I defined the labels by **communicative intent and structure**: `analysis` = evidenced reasoning, `hot_take` = unevidenced verdict, `reaction` = sincere emotion, `joke` = comedic intent. The model instead learned **lexical proxies**: *technical jargon → analysis*, and *brevity + playful diction → joke/reaction* (two registers it routinely conflates). It captured the `hot_take`/`analysis` split better than expected (F1 0.86) — but only via vocabulary, which is why a jargon-laden opinion fools it. It essentially **failed to learn the `joke`/`reaction` intent distinction**, the part of my taxonomy that most requires understanding *comedic construction* rather than surface words — and the part 140 examples are least able to teach. The gap, in one line: **my definitions are about why a comment was written; the model's decision boundary is about which words it contains.**
+
+---
+
+## Demo
+
+A 3–5 minute demo video accompanies this repo. It shows live classification (via `app.py` / `scripts/predict.py`), narrates one correct and one incorrect prediction, and walks through this evaluation report. The same content is reproducible from source:
+- **3–5 posts with label + confidence:** the [Sample classifications](#sample-classifications-fine-tuned-model--confidence) table, or run `python scripts/predict.py "<comment>"`.
+- **Correct, explained:** the analysis 0.97 example (specific checkable evidence → high-confidence correct).
+- **Incorrect, explained:** the hot_take→analysis 0.97 miss (jargon fooled it) in [Error analysis](#error-analysis-3-of-the-8-misses-with-the-pattern).
+- **Key metrics summary:** the accuracy / macro-F1 table at the top of the evaluation report.
+
+## Deployed interface (stretch)
+
+[`app.py`](app.py) is a **Gradio web app**: paste any F1 comment and it shows the predicted label with a confidence bar across all four classes. Run `python app.py` → opens a local URL. ([`scripts/predict.py`](scripts/predict.py) is the CLI equivalent.) Verified example — input *"Verstappen is the most overrated champion in history"* → **hot_take 0.62** (joke 0.20, reaction 0.14, analysis 0.05).
+
+## Inter-annotator reliability (stretch)
+
+To check that the labels reflect a shareable standard rather than one annotator's idiosyncrasy, a **second annotator independently labels 32 comments** (8 per class) blind, then we compare against the original AI-suggested labels with Cohen's kappa.
+
+- Protocol: fill the `your_label` column in [`data/iaa_blind.csv`](data/iaa_blind.csv) without looking at the key, then run `python scripts/iaa.py`.
+- **Result:** percent agreement `__%`, Cohen's kappa `__` (run `scripts/iaa.py` to populate). Because this is a *subjective* discourse task, perfect agreement isn't expected; the disagreements — concentrated on the `joke`↔`reaction` boundary — quantify the same ambiguity the model struggles with, and contextualize the performance ceiling discussed under [Definition of success](planning.md).
 
 ---
 
@@ -168,6 +224,8 @@ pip install transformers datasets accelerate groq matplotlib
 python scripts/run_baseline.py     # Groq zero-shot baseline -> results/baseline.json
 python scripts/finetune_eval.py    # fine-tune + eval -> results/evaluation_results.json, confusion_matrix.png, ft_model/
 python scripts/predict.py "Leclerc lost that on strategy not pace, he was 0.3s/lap quicker..."   # classify any comment
+python app.py                      # Gradio web interface: paste a comment -> label + confidence
+# inter-annotator check: fill data/iaa_blind.csv (your_label column), then: python scripts/iaa.py
 ```
 
 The data pipeline (`build_pool.py` → label → `build_dataset.py`) and the committed `data/takemeter_dataset.csv` reproduce the dataset; the original Colab notebook workflow is equivalent (label map in `notebook/label_map.py`, prompt in `notebook/groq_prompt.md`).
@@ -178,7 +236,9 @@ The data pipeline (`build_pool.py` → label → `build_dataset.py`) and the com
 planning.md                     design notes (labels, rules, AI plan, hard cases)
 data/takemeter_dataset.csv      200 labeled comments (+7 blank) — the dataset
 data/pool*.csv                  raw scraped candidate pools (provenance)
-scripts/                        collect, build_pool, build_dataset, data_split, run_baseline, finetune_eval, predict
+app.py                          Gradio web interface (deployed-interface stretch)
+scripts/                        collect, build_pool, build_dataset, data_split, run_baseline, finetune_eval, predict, iaa
+data/iaa_blind.csv              32-example blind sheet for inter-annotator reliability
 results/evaluation_results.json baseline + fine-tuned metrics
 results/confusion_matrix.png    fine-tuned confusion matrix (image)
 notebook/                       label_map.py + groq_prompt.md for the Colab workflow

@@ -3,3 +3,10 @@ pandas
 scikit-learn
 python-dotenv
 pytest
+# ML + serving (torch must be installed from the CPU index — see README "How to run"):
+transformers
+datasets
+accelerate
+groq
+matplotlib
+gradio
