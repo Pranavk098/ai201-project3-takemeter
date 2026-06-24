@@ -185,12 +185,11 @@ A 3–5 minute demo video accompanies this repo. It shows live classification (v
 
 ## Inter-annotator reliability (stretch)
 
-To check that the labels reflect a shareable standard rather than one annotator's idiosyncrasy, a **second annotator independently labels 32 comments** (8 per class) blind, then we compare against the original AI-suggested labels with Cohen's kappa.
+**Two people independently labeled the same 32 comments** (8 per class) blind; `python scripts/iaa.py` measures their agreement with Cohen's kappa.
 
-- Protocol: a second annotator filled `your_label` in [`data/iaa_blind.csv`](data/iaa_blind.csv) blind; `python scripts/iaa.py` computes the scores.
-- **Result: 43.8% agreement, Cohen's κ = 0.25** ("fair"), n = 32, 18 disagreements.
-- **Agreement is high on `analysis`** — only 2 of 18 disagreements touch it; evidenced reasoning is recognizable to both annotators. **Disagreement concentrates on the other three registers:** `reaction`↔`hot_take` (8 cases) and `joke` vs the rest (7 cases) account for nearly all of it.
-- **Interpretation (honest):** the low κ is itself a finding. `analysis` is a shareable standard, but the `hot_take` / `reaction` / `joke` boundaries are **genuinely subjective** — a second annotator draws them differently. This directly explains why the fine-tuned model's errors cluster on `joke`↔`reaction`, and why neither model clears ~0.80: part of the ceiling is in the *task*, not the model. It is also a candid reliability caveat, given the original labels were AI-suggested.
+- **Result: 46.9% agreement, Cohen's κ = 0.28** ("fair"), n = 32, 17 disagreements.
+- **Where they disagreed:** `reaction`↔`hot_take` is the biggest split (8 of 17); then the `analysis` boundary on *passionate but evidenced* posts (5 — e.g. the Honda rant and the brake-marbles breakdown: one annotator read venting, the other a real argument); then `joke` vs the rest (4).
+- **Interpretation (honest):** even two humans agree only ~47%. That low κ is itself a finding — `analysis` is reasonably shareable, but the `hot_take` / `reaction` / `joke` distinctions are **genuinely subjective**: reasonable people draw them differently. This directly explains why the fine-tuned model's errors cluster on `joke`↔`reaction`, and why neither model clears ~0.80 — a large part of the ceiling is in the *task itself*, not the model.
 
 ---
 
@@ -227,7 +226,7 @@ python scripts/run_baseline.py     # Groq zero-shot baseline -> results/baseline
 python scripts/finetune_eval.py    # fine-tune + eval -> results/evaluation_results.json, confusion_matrix.png, ft_model/
 python scripts/predict.py "Leclerc lost that on strategy not pace, he was 0.3s/lap quicker..."   # classify any comment
 python app.py                      # Gradio web interface: paste a comment -> label + confidence
-# inter-annotator check: fill data/iaa_blind.csv (your_label column), then: python scripts/iaa.py
+# inter-annotator (two-human study): python scripts/iaa.py   # compares annotator1 vs annotator2 in data/iaa_blind.csv
 ```
 
 The data pipeline (`build_pool.py` → label → `build_dataset.py`) and the committed `data/takemeter_dataset.csv` reproduce the dataset; the original Colab notebook workflow is equivalent (label map in `notebook/label_map.py`, prompt in `notebook/groq_prompt.md`).
