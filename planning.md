@@ -71,17 +71,18 @@ The genuinely ambiguous post *types* I expect during annotation, and how I'll ha
 | **Sarcasm carrying an opinion** (joke ↔ hot_take) | *"Ah yes, brilliant strategy Ferrari, galaxy-brained stuff."* | Rule #3: punchline-structured sarcasm → **`joke`**, even though it encodes a real take. |
 | **Fact recitation** (analysis ↔ other) | *"DRS only works within 1s at the detection point."* | A fact with no claim/argument is **not** `analysis` → filter as `other`. |
 
-**Documented hard cases from annotation (filled during Milestone 3):** I will keep a running list in the dataset's `notes` column and promote the **3 most instructive** here — the actual comment, the two labels it sat between, and what I decided and why.
+**Documented hard cases from annotation (Milestone 3).** Three genuinely difficult comments and the decision made:
 
-1. _(to be added during annotation)_
-2. _(to be added during annotation)_
-3. _(to be added during annotation)_
+1. **`hot_take` vs `analysis`** — *"Apart from that time a few months ago where he demanded a journalist leave a press conference because he said something Verstappen didn't like… but it's back to acting like it's Saint Verstappen again."* It cites a specific event, which looks like evidence. **Decided `hot_take`:** by rule #1, the event is *decorative* — used to score a rhetorical point against the "Saint Verstappen" narrative, not as load-bearing reasoning toward a checkable claim.
+2. **`reaction` vs `hot_take`/`joke`** — *"Max being the first F1 driver to win in a Ferrari this year is diabolical."* Reads as a jab, but is it an argued verdict or a bit? **Decided `reaction`:** by rule #2/#3 it's an amused in-the-moment exclamation with no debatable position and no constructed punchline — it's venting wry delight, not asserting a take.
+3. **`analysis` vs `hot_take` — left BLANK for review** — *"Except that's not corruption. Corruption is knowingly using your position of power for personal or collective gain… and until now there hasn't been anything to indicate that Masi['s] doings were acts of corruption."* A calm, reasoned definitional argument — but the reasoning is purely conceptual with **no specific, verifiable F1 evidence**, so it fails the load-bearing test for `analysis`, yet it's far too measured to be a clean `hot_take`. Neither rule fires cleanly, so it is one of the 7 comments left **blank** for a second pass. (The other blanks are flagged with reasons in the dataset's `notes` column.)
 
 ---
 
 ## 4. Data collection plan
 
-- **Source:** public Reddit comments — r/F1Technical (analysis-dense) and r/formula1 (everything else), collected via the PRAW script ([scripts/collect.py](scripts/collect.py)). Public content only; no authenticated or private channels.
+- **Source:** public Reddit comments — r/F1Technical (analysis-dense, 18 examples) and r/formula1 (everything else, 189 examples). Public content only; no authenticated or private channels.
+- **Collection method:** **Apify** (`automation-lab/reddit-scraper`). *PRAW was the original plan, but Reddit's "Responsible Builder Policy" blocked API-app creation and public `.json` endpoints return 403, so we pivoted to Apify.* Three runs built the pool: (1) r/F1Technical + r/formula1 top-of-year posts; (2) r/formula1 "Race Discussion" threads (hot-take dense); (3) r/formula1 "Race Thread" threads (reaction dense — the scarcest register). ~$0.9 of Apify credits. Pipeline: raw scrape → [scripts/build_pool.py](scripts/build_pool.py) (clean/dedupe/filter) → label → [scripts/build_dataset.py](scripts/build_dataset.py) (join text + labels → final CSV). The PRAW [scripts/collect.py](scripts/collect.py) is retained for reproducibility if creds become available.
 - **Unit:** one comment = one example.
 - **How many per label:** target **~50 each (200 total)**, with a **hard floor of ≥40 (20%) per label**. (The milestone's ceiling is no label above 70%; my target is far stricter so no class dominates.)
 - **Sourcing strategy (stratified so balance is built in, not hoped for):**
@@ -131,11 +132,11 @@ Concrete, objectively checkable thresholds on the held-out test set:
 This project has little code to generate; AI tools help in three specific places.
 
 - **Label stress-testing — DONE (used Claude).** Before annotating, I had the assistant generate ~8 boundary posts and classify each with these definitions. It validated most boundaries and exposed one weak spot — `reaction` vs `hot_take` for *evaluative venting* — which I fixed by sharpening **rule #2** (debatable verdict → `hot_take`; hyperbolic venting → `reaction`). Outcome recorded in §3.
-- **Annotation assistance — DECISION: hand-label all 200 (no LLM pre-labeling).** Rationale: the boundaries here are subjective and tone-sensitive; hand-labeling keeps me close to the data and avoids importing an LLM's systematic biases into the *training* labels (which would also leak into the very thing I'm measuring against the Groq baseline). *Fallback if time-constrained:* pre-label with an LLM, review and correct **every** row, and add a `label_source` column (`human` / `llm_reviewed`) for disclosure. I am explicitly choosing the hand-label path unless that fallback proves necessary.
+- **Annotation assistance — REVISED DECISION: LLM pre-labeling, human review.** The original plan was to hand-label all 200. In practice, at the user's request, **Claude (Opus 4.8) pre-labeled every comment** by applying the §2 definitions and §3 rules, leaving 7 genuinely ambiguous cases blank. **These are AI-*suggested* labels and require the annotator's review/correction before the dataset is treated as ground truth** — this is mandatory, not optional. **Known risk being accepted:** because the Groq baseline (Milestone 4) is also an LLM, LLM-origin labels make the evaluation partly a measure of "does DistilBERT imitate an LLM"; human review is what restores the labels as genuine human-intended ground truth, so skimming the review would invalidate the comparison. Inter-annotator agreement (stretch) would directly quantify how much the human pass changed.
 - **Failure analysis — PLANNED (will use Claude).** After evaluation, I'll give the assistant the list of wrong test predictions (`text`, true label, predicted label) and ask it to propose *systematic* patterns (e.g., "evidenced rants misread as `hot_take` via CAPS/profanity"). **Verification:** I will not accept a pattern on the AI's word — I'll re-read every cited example myself and confirm the pattern holds in the confusion-matrix counts before it goes in the writeup.
 
 ### AI usage disclosure
-Claude (Opus 4.8, via Claude Code) was used to: brainstorm the label taxonomy and edge-case rules, run the label stress-test above, draft this `planning.md`, and scaffold the collection script + tests. Planned future use: failure-pattern analysis (verified manually). Training labels are **hand-assigned by me**; no LLM pre-labeling unless disclosed via a `label_source` column.
+Claude (Opus 4.8, via Claude Code) was used to: brainstorm the label taxonomy and edge-case rules, run the label stress-test, scrape the data (Apify), build the cleaning/merge pipeline, draft this `planning.md`, and **pre-label all 200 examples** (see Annotation assistance above). Planned future use: failure-pattern analysis (verified manually). **The current labels in `data/takemeter_dataset.csv` are AI-suggested and pending human review;** the 7 blank rows await a human decision. This disclosure must be carried into the README's AI-usage section.
 
 ---
 
