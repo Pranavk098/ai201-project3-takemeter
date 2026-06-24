@@ -2,6 +2,8 @@
 
 TakeMeter is a fine-tuned text classifier that labels a Formula 1 Reddit comment by its **register**: `analysis`, `hot_take`, `reaction`, or `joke`. It is built on `distilbert-base-uncased`, fine-tuned on 200 hand-curated comments, and benchmarked against a zero-shot Groq Llama-3.3-70B baseline.
 
+🎥 **Demo video (≈3 min): https://www.loom.com/share/3e76942efa334f9aa0f122d9e751a76a**
+
 > This README is the final report and stands on its own. [planning.md](planning.md) holds the deeper design notes (full label rules, edge-case reasoning, AI tool plan).
 
 ---
@@ -173,7 +175,7 @@ I defined the labels by **communicative intent and structure**: `analysis` = evi
 
 ## Demo
 
-A 3–5 minute demo video accompanies this repo. It shows live classification (via `app.py` / `scripts/predict.py`), narrates one correct and one incorrect prediction, and walks through this evaluation report. The same content is reproducible from source:
+**▶️ [Watch the demo (≈3 min)](https://www.loom.com/share/3e76942efa334f9aa0f122d9e751a76a)** — it shows live classification (via `app.py`), narrates one correct and one incorrect prediction, and walks through this evaluation report. The same content is reproducible from source:
 - **3–5 posts with label + confidence:** the [Sample classifications](#sample-classifications-fine-tuned-model--confidence) table, or run `python scripts/predict.py "<comment>"`.
 - **Correct, explained:** the analysis 0.97 example (specific checkable evidence → high-confidence correct).
 - **Incorrect, explained:** the hot_take→analysis 0.97 miss (jargon fooled it) in [Error analysis](#error-analysis-3-of-the-8-misses-with-the-pattern).
